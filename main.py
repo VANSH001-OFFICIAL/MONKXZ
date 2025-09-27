@@ -1,10 +1,14 @@
 import json
 import logging
-from config import BOT_TOKEN # <--- YEH LINE CHANGE KIJIYE
+import os # <-- os module add kiya, just in case aage zaroorat pade (though BOT_TOKEN in config.py handles this)
+from config import BOT_TOKEN 
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
-# ... Baaki ka code ...
+# --- Global Variable for Admin IDs ---
+# NameError theek karne ke liye isse global define kiya gaya hai
+ADMIN_USER_IDS = [] 
+# -------------------------------------
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -15,13 +19,36 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration & Data Management ---
 DATA_FILE = 'users_data.json'
+ADMIN_IDS_FILE = 'admin_ids.json' # <-- Admin IDs file ka naam define kiya
 DEFAULT_SETTINGS = {
     "leaderboard_size": 10,
-    "leaderboard_header": "🏆 MONKXZ GLOBAL LEADERBOARD 🏆", 
+    "leaderboard_header": "🏆 MONKXZ GLOBAL LEADERBOARD 🏆",    
     "support_message": "📞 **Support se Sampark Karein**\n\n**Aapko koi sawaal ya takleef hai, toh kripya seedhe hamare support team se sampark karein: @YourSupportUsername**",
     "start_message": "**Welcome! I AM MONKXZ LEADERBOARD BOT!!**\n\n**EARN TOGETHER !!**",
     "referral_points": 500
 }
+
+def load_admin_ids():
+    """Admin IDs ko admin_ids.json file se load karta hai aur global variable set karta hai."""
+    global ADMIN_USER_IDS
+    try:
+        with open(ADMIN_IDS_FILE, 'r') as f:
+            data = json.load(f)
+            
+            # Assuming your JSON file has a key named "admin_ids" with a list of IDs (e.g., {"admin_ids": [12345, 67890]})
+            if 'admin_ids' in data and isinstance(data['admin_ids'], list):
+                # IDs ko integer mein convert karein
+                ADMIN_USER_IDS = [int(id) for id in data['admin_ids']] 
+                logger.info(f"Loaded {len(ADMIN_USER_IDS)} admin IDs.")
+            else:
+                logger.error(f"'{ADMIN_IDS_FILE}' is missing the 'admin_ids' key or it's not a list.")
+                
+    except FileNotFoundError:
+        logger.error(f"'{ADMIN_IDS_FILE}' file not found! Admin features will not work.")
+    except json.JSONDecodeError:
+        logger.error(f"Error decoding JSON from '{ADMIN_IDS_FILE}'.")
+    
+# Baaki ke functions jismein koi change nahi hai...
 
 def load_user_data():
     """Load user data and bot settings from JSON, applying defaults if missing."""
@@ -145,9 +172,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ]
     
     reply_markup = ReplyKeyboardMarkup(
-        keyboard_layout, 
-        resize_keyboard=True, 
-        one_time_keyboard=False 
+        keyboard_layout,    
+        resize_keyboard=True,    
+        one_time_keyboard=False    
     )
     
     await update.message.reply_text(
@@ -171,7 +198,7 @@ async def mypoints(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await (update.message or update.callback_query).reply_text(
         f"**🏆 {user_name} ke Points:**\n"
-        f"**Points:** {points}\n" 
+        f"**Points:** {points}\n"    
         f"**Rank:** #{rank} out of {total_users} users.",
         parse_mode='Markdown'
     )
@@ -253,7 +280,7 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             [btn_support_msg],
             [btn_start_msg],
             [btn_back]
-        ], 
+        ],    
         resize_keyboard=True,
         one_time_keyboard=False
     )
@@ -574,7 +601,7 @@ async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
                 return
             data["_settings"]["start_message"] = new_message
             await update.message.reply_text(f"✅ **Start Message successfully updated. Naya Message:\n{new_message}**", parse_mode='Markdown')
-        
+            
         elif mode == 'size':
             try:
                 new_size = int(text)
@@ -602,7 +629,7 @@ async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
 
         save_user_data(data)
         context.user_data.pop('setting_mode', None)
-        await admin_panel(update, context) 
+        await admin_panel(update, context)    
 
     else:
         pass
@@ -636,6 +663,7 @@ def main() -> None:
     application.add_handler(MessageHandler(admin_regex, handle_admin_buttons))
     
     # Message handler for catching text input in admin mode (like setting values or broadcast message)
+    # Note: filters.User(ADMIN_USER_IDS) will now work because ADMIN_USER_IDS is globally defined and loaded.
     application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & filters.User(ADMIN_USER_IDS), handle_admin_buttons))
 
     logger.info("Bot is starting...")
@@ -643,5 +671,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    load_admin_ids() # <--- IDs ko load karein Taki main() mein woh available ho
     main()
-
