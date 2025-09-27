@@ -1,8 +1,10 @@
 import json
 import logging
-from config import BOT_TOKEN, ADMIN_USER_IDS
+from config import BOT_TOKEN # <--- YEH LINE CHANGE KIJIYE
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+
+# ... Baaki ka code ...
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -642,3 +644,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
